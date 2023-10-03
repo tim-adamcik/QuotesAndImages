@@ -13,9 +13,24 @@ class RandomImageListViewModel: ObservableObject {
     @Published var randomImages: [RandomImageViewModel] = []
     
     func getRandomImages(ids: [Int]) async {
+        
+        let webService = WebService()
+        
         do {
-            let randomImages = try await WebService().getRandomImages(ids: ids)
-            self.randomImages = randomImages.map(RandomImageViewModel.init)
+            // let randomImages = try await WebService().getRandomImages(ids: ids)
+            // self.randomImages = randomImages.map(RandomImageViewModel.init)
+            
+            try await withThrowingTaskGroup(of: (Int, RandomImage).self, body: { group in
+                for id in ids {
+                    group.addTask {
+                        return (id, try await webService.getRandomImage(id: id))
+                    }
+                }
+                
+                for try await (_, randomImage) in group {
+                    randomImages.append(RandomImageViewModel(randomImage: randomImage))
+                }
+            })
         } catch {
            print("error = \(error)")
         }
